@@ -1,5 +1,5 @@
 # encoding:utf-8
-
+import random
 import time
 
 import openai
@@ -106,6 +106,11 @@ class ChatGPTBot(Bot, OpenAIImage):
             reply = Reply(ReplyType.ERROR, "Bot不支持处理{}类型的消息".format(context.type))
             return reply
 
+    def random_message_delay(self):
+        min_delay, max_delay = map(int, conf().get("message_delay_range").split('-'))
+        sleep_time = random.uniform(min_delay, max_delay)
+        time.sleep(sleep_time)
+
     def reply_text(self, session: ChatGPTSession, api_key=None, args=None, retry_count=0) -> dict:
         """
         call openai's ChatCompletion to get the answer
@@ -115,11 +120,14 @@ class ChatGPTBot(Bot, OpenAIImage):
         :return: {}
         """
         try:
+            self.random_message_delay()
             if conf().get("rate_limit_chatgpt") and not self.tb4chatgpt.get_token():
                 raise openai.error.RateLimitError("RateLimitError: rate limit exceeded")
             # if api_key == None, the default openai.api_key will be used
             if args is None:
                 args = self.args
+            if conf().get("open_chatgpt_log", False):
+                logger.info("[CHATGPT] session query={}".format(session.messages))
             response = openai.ChatCompletion.create(api_key=api_key, messages=session.messages, **args)
             # logger.debug("[CHATGPT] response={}".format(response))
             # logger.info("[ChatGPT] reply={}, total_tokens={}".format(response.choices[0]['message']['content'], response["usage"]["total_tokens"]))
